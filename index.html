@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ARO Emulator</title>
+<style>
+body { font-family: monospace; background:#111; color:#eee; }
+.container { display:flex; gap:40px; }
+.left, .right { width:45%; }
+button { padding:10px; margin-top:10px; }
+pre { background:#222; padding:10px; height:300px; overflow:auto; }
+.reg { margin:5px 0; }
+</style>
+</head>
+<body>
+
+<h2>ARO - Instruction Emulator (Web)</h2>
+
+<div class="container">
+<div class="left">
+<input type="file" id="fileInput"><br>
+<button onclick="executeInstruction()">Execute Instruction</button>
+<h3>File Content</h3>
+<pre id="fileContent"></pre>
+</div>
+
+<div class="right">
+<h3>Current Instruction</h3>
+<div id="instr">INSTR = 0x0000</div>
+<h3>Registers</h3>
+<div id="registers"></div>
+</div>
+</div>
+
+<script>
+
+let fileContent = []
+let registers = new Array(8).fill(0)
+let currentInstruction = 0
+let ready = false
+
+function updateRegisters() {
+    let html = ""
+    for (let i=0;i<8;i++){
+        let label = (i==6) ? "R6 (LR)" : (i==7 ? "R7 (PC)" : "R"+i)
+        html += `<div class="reg">${label} = ${registers[i]}</div>`
+    }
+    document.getElementById("registers").innerHTML = html
+}
+
+document.getElementById("fileInput").addEventListener("change", function(event){
+    const reader = new FileReader()
+    reader.onload = function(e){
+        let text = e.target.result.split("\n")
+        fileContent = []
+        for (let i=7;i<text.length-1;i++){
+            let parts = text[i].trim().split(" ")
+            parts.forEach(p => { if(p !== "") fileContent.push(p) })
+        }
+        document.getElementById("fileContent").textContent = fileContent.join("\n")
+        registers.fill(0)
+        currentInstruction = 0
+        ready = true
+        updateRegisters()
+        document.getElementById("instr").textContent =
+            "INSTR = 0x" + fileContent[currentInstruction]
+    }
+    reader.readAsText(event.target.files[0])
+})
+
+function executeInstruction(){
+    if(!ready) return
+
+    let instr = fileContent[currentInstruction]
+    let instrBin = parseInt(instr,16).toString(2).padStart(16,"0")
+
+    if(instrBin.startsWith("00100")){
+        let Rd = parseInt(instrBin.slice(5,8),2)
+        let Offset8 = parseInt(instrBin.slice(8,16),2)
+        registers[Rd] = Offset8
+    }
+    else if(instrBin.startsWith("00110")){
+        let Rd = parseInt(instrBin.slice(5,8),2)
+        let Offset8 = parseInt(instrBin.slice(8,16),2)
+        registers[Rd] += Offset8
+    }
+    else if(instrBin.startsWith("00111")){
+        let Rd = parseInt(instrBin.slice(5,8),2)
+        let Offset8 = parseInt(instrBin.slice(8,16),2)
+        registers[Rd] -= Offset8
+    }
+
+    if(currentInstruction < fileContent.length-1){
+        currentInstruction++
+        document.getElementById("instr").textContent =
+            "INSTR = 0x" + fileContent[currentInstruction]
+    } else {
+        document.getElementById("instr").textContent =
+            "INSTR = 0x0000 (empty)"
+    }
+
+    registers[7] = currentInstruction*2
+    updateRegisters()
+}
+
+updateRegisters()
+
+</script>
+</body>
+</html>
