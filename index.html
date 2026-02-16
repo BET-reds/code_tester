@@ -161,9 +161,27 @@
     const $ = (id) => document.getElementById(id);
     const input = document.getElementById("fileInput");
 
-    function logLine(msg, cls = "") {
+    /*function logLine(msg, cls = "") {
       const line = cls ? `[${cls}] ${msg}` : msg;
       $("log").textContent = (line + "\n" + $("log").textContent).slice(0, 6000);
+    }*/
+
+    function logLine(msg, cls = "") {
+      const log = $("log");
+
+      // Crée un élément <div> pour chaque ligne
+      const line = document.createElement("div");
+
+      if (cls) line.className = cls.toLowerCase(); // applique la classe CSS ok/warn/err
+      line.textContent = msg;
+
+      // Ajoute la ligne en haut
+      log.prepend(line);
+
+      // Limite à 100 lignes pour ne pas trop grossir
+      while (log.childNodes.length > 100) {
+        log.removeChild(log.lastChild);
+      }
     }
 
     function bin16FromHexToken(tok) {
@@ -376,54 +394,6 @@
 
 
     }
-
-    /*input.addEventListener("change", function () {
-      const file = this.files[0];
-
-      if (!file) return;
-
-      // Vérification par extension
-      const fileName = file.name.toLowerCase();
-      const isRaw = fileName.endsWith(".raw");
-
-      if (!isRaw) {
-        alert("Seuls les fichiers .raw sont autorisés !");
-
-        this.value = "";
-        return;
-      }
-
-      //console.log("Fichier valide :", file.name);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target.result;
-        fileTokens = parse(text);
-        $("fileContent").textContent = fileTokens.join("\n");
-        ready = true;
-        $("info").textContent = `Loaded ${fileTokens.length} tokens`;
-        resetState();
-      };
-      reader.readAsText(f);
-
-      // allow reload.
-      this.value = "";
-    });
-
-    $("fileInput").addEventListener("change", (event) => {
-      const f = event.target.files?.[0];
-      if (!f) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target.result;
-        fileTokens = parse(text);
-        $("fileContent").textContent = fileTokens.join("\n");
-        ready = true;
-        $("info").textContent = `Loaded ${fileTokens.length} tokens`;
-        resetState();
-      };
-      reader.readAsText(f);
-    });*/
 
     $("fileInput").addEventListener("change", (event) => {
       const input = event.target;
