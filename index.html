@@ -1,284 +1,376 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ARO Emulator</title>
-<style>
-  body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0f1115; color:#e6e6e6; margin:20px; }
-  .container { display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; }
-  .panel { flex: 1 1 420px; background:#151924; border:1px solid #242b3a; border-radius:10px; padding:14px; }
-  h2,h3 { margin: 8px 0 12px 0; }
-  input, button { font: inherit; }
-  button { padding:10px 12px; margin-top:10px; cursor:pointer; border-radius:8px; border:1px solid #2c3550; background:#1b2233; color:#e6e6e6; }
-  button:disabled { opacity:.5; cursor:not-allowed; }
-  pre { background:#0b0d12; border:1px solid #242b3a; padding:10px; border-radius:8px; height:360px; overflow:auto; }
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-  .kv { padding:6px 8px; background:#0b0d12; border:1px solid #242b3a; border-radius:8px; display:inline-block; margin:4px 6px 0 0; }
-  .warn { color:#ffcc66; }
-  .err { color:#ff6b6b; }
-  .ok { color:#7ee787; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARO Emulator</title>
+  <style>
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #0f1115;
+      color: #e6e6e6;
+      margin: 20px;
+    }
+
+    .container {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .panel {
+      flex: 1 1 420px;
+      background: #151924;
+      border: 1px solid #242b3a;
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    h2,
+    h3 {
+      margin: 8px 0 12px 0;
+    }
+
+    input,
+    button {
+      font: inherit;
+    }
+
+    button {
+      padding: 10px 12px;
+      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid #2c3550;
+      background: #1b2233;
+      color: #e6e6e6;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    pre {
+      background: #0b0d12;
+      border: 1px solid #242b3a;
+      padding: 10px;
+      border-radius: 8px;
+      height: 360px;
+      overflow: auto;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .kv {
+      padding: 6px 8px;
+      background: #0b0d12;
+      border: 1px solid #242b3a;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 4px 6px 0 0;
+    }
+
+    .warn {
+      color: #ffcc66;
+    }
+
+    .err {
+      color: #ff6b6b;
+    }
+
+    .ok {
+      color: #7ee787;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>ARO - Instruction Emulator (Web)</h2>
+  <h2>ARO - Instruction Emulator (Web)</h2>
 
-<div class="container">
-  <div class="panel">
-    <div class="row">
-      <input type="file" id="fileInput" />
-      <button id="stepBtn" disabled>Execute instruction</button>
-      <button id="resetBtn" disabled>Reset</button>
+  <div class="container">
+    <div class="panel">
+      <div class="row">
+        <input type="file" id="fileInput" />
+        <button id="stepBtn" disabled>Execute instruction</button>
+        <button id="resetBtn" disabled>Reset</button>
+      </div>
+      <h3>File content (tokens)</h3>
+      <pre id="fileContent"></pre>
     </div>
-    <h3>File content (tokens)</h3>
-    <pre id="fileContent"></pre>
+
+    <div class="panel">
+      <h3>Status</h3>
+      <div id="info" class="kv">Select your raw file</div>
+      <div id="instr" class="kv">INSTR = 0x0000</div>
+      <div id="decoded" class="kv">—</div>
+
+      <h3>Registers</h3>
+      <div id="registers"></div>
+
+      <h3>Last message</h3>
+      <pre id="log"></pre>
+    </div>
   </div>
 
-  <div class="panel">
-    <h3>Status</h3>
-    <div id="info" class="kv">Select your raw file</div>
-    <div id="instr" class="kv">INSTR = 0x0000</div>
-    <div id="decoded" class="kv">—</div>
+  <footer>
+    Author : Bastien Extrat reds @ heig-vd
+  </footer>
 
-    <h3>Registers</h3>
-    <div id="registers"></div>
+  <script>
+    let fileTokens = [];
+    let registers = new Array(8).fill(0);
+    let currentInstruction = 0;
+    let ready = false;
 
-    <h3>Last message</h3>
-    <pre id="log"></pre>
-  </div>
-</div>
+    const $ = (id) => document.getElementById(id);
 
-<script>
-let fileTokens = [];
-let registers = new Array(8).fill(0);
-let currentInstruction = 0;
-let ready = false;
+    function logLine(msg, cls = "") {
+      const line = cls ? `[${cls}] ${msg}` : msg;
+      $("log").textContent = (line + "\n" + $("log").textContent).slice(0, 6000);
+    }
 
-const $ = (id) => document.getElementById(id);
+    function bin16FromHexToken(tok) {
+      const n = parseInt(tok, 16);
+      if (Number.isNaN(n)) return null;
+      return n.toString(2).padStart(16, "0");
+    }
 
-function logLine(msg, cls="") {
-  const line = cls ? `[${cls}] ${msg}` : msg;
-  $("log").textContent = (line + "\n" + $("log").textContent).slice(0, 6000);
-}
+    function updateUI() {
+      // Instr
+      if (!ready || currentInstruction >= fileTokens.length) {
+        $("instr").textContent = "INSTR = 0x0000 (empty instructions memory)";
+      } else {
+        $("instr").textContent = "INSTR = 0x" + fileTokens[currentInstruction];
+      }
+      // Registers
+      let html = "";
+      for (let i = 0; i < 8; i++) {
+        const label = (i === 6) ? "R6 (LR)" : (i === 7 ? "R7 (PC)" : `R${i}`);
+        html += `<span class="kv">${label} = ${registers[i]}</span>`;
+      }
+      $("registers").innerHTML = html;
+      // Buttons
+      $("stepBtn").disabled = !ready;
+      $("resetBtn").disabled = !ready;
+    }
 
-function bin16FromHexToken(tok) {
-  const n = parseInt(tok, 16);
-  if (Number.isNaN(n)) return null;
-  return n.toString(2).padStart(16, "0");
-}
+    function resetState() {
+      registers.fill(0);
+      currentInstruction = 0;
+      $("decoded").textContent = "—";
+      $("log").textContent = "";
+      $("info").textContent = ready ? "Loaded" : "Select your raw file";
+      updateUI();
+    }
 
-function updateUI() {
-  // Instr
-  if (!ready || currentInstruction >= fileTokens.length) {
-    $("instr").textContent = "INSTR = 0x0000 (empty instructions memory)";
-  } else {
-    $("instr").textContent = "INSTR = 0x" + fileTokens[currentInstruction];
-  }
-  // Registers
-  let html = "";
-  for (let i = 0; i < 8; i++) {
-    const label = (i === 6) ? "R6 (LR)" : (i === 7 ? "R7 (PC)" : `R${i}`);
-    html += `<span class="kv">${label} = ${registers[i]}</span>`;
-  }
-  $("registers").innerHTML = html;
-  // Buttons
-  $("stepBtn").disabled = !ready;
-  $("resetBtn").disabled = !ready;
-}
+    function parseLikePython(text) {
+      // Copie la logique de ton script : split lines, puis à partir de la ligne 7
+      // et split par espaces, flatten + clean '' :contentReference[oaicite:1]{index=1}
+      const lines = text.split("\n");
+      const out = [];
+      for (let i = 7; i < lines.length - 1; i++) {
+        const parts = lines[i].split(" ");
+        for (const p of parts) out.push(p);
+      }
+      return out.filter(x => x !== "");
+    }
 
-function resetState() {
-  registers.fill(0);
-  currentInstruction = 0;
-  $("decoded").textContent = "—";
-  $("log").textContent = "";
-  $("info").textContent = ready ? "Loaded" : "Select your raw file";
-  updateUI();
-}
+    function execOneInstruction() {
+      if (!ready) return;
 
-function parseLikePython(text) {
-  // Copie la logique de ton script : split lines, puis à partir de la ligne 7
-  // et split par espaces, flatten + clean '' :contentReference[oaicite:1]{index=1}
-  const lines = text.split("\n");
-  const out = [];
-  for (let i = 7; i < lines.length - 1; i++) {
-    const parts = lines[i].split(" ");
-    for (const p of parts) out.push(p);
-  }
-  return out.filter(x => x !== "");
-}
+      if (currentInstruction >= fileTokens.length) {
+        $("info").textContent = "No more instructions.";
+        updateUI();
+        return;
+      }
 
-function execOneInstruction() {
-  if (!ready) return;
+      const tok = fileTokens[currentInstruction];
+      const instrBin = bin16FromHexToken(tok);
+      if (!instrBin) {
+        $("decoded").textContent = "Invalid hex token";
+        logLine(`Token invalide: "${tok}"`, "ERR");
+        currentInstruction++;
+        registers[7] = currentInstruction * 2;
+        updateUI();
+        return;
+      }
 
-  if (currentInstruction >= fileTokens.length) {
-    $("info").textContent = "No more instructions.";
+      // Decoder
+      let decoded = "";
+      let supported = true;
+
+      const bits = instrBin;
+
+      const u = (s, e) => bits.slice(s, e);           // substring bits [s:e)
+      const b2 = (s, e) => parseInt(u(s, e), 2);
+
+      if (u(0, 5) === "00000") {
+        decoded = "move shifted register - LSL";
+        const Offset5 = b2(5, 10);
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = registers[Rs] * (2 ** Offset5);
+      }
+
+      else if (u(0, 5) === "00001") {
+        decoded = "move shifted register - LSR";
+        const Offset5 = b2(5, 10);
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = Math.trunc(registers[Rs] / (2 ** Offset5));
+      }
+
+      else if (u(0, 5) === "00010") {
+        decoded = "move shifted register - ASR (not tested)";
+        const Offset5 = b2(5, 10);
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = Math.trunc(registers[Rs] / (2 ** Offset5));
+      }
+
+      else if (u(0, 7) === "0001100") {
+        decoded = "Add/substract - Add - Register operand";
+        const Rn = b2(7, 10);
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = registers[Rs] + registers[Rn];
+      }
+
+      else if (u(0, 7) === "0001101") {
+        decoded = "Add/substract - Sub - Register operand";
+        const Rn = b2(7, 10);
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = registers[Rs] - registers[Rn];
+      }
+
+      else if (u(0, 7) === "0001110") {
+        decoded = "Add/substract - Add - Immediate operand";
+        const Offset3 = b2(7, 10);
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = registers[Rs] + Offset3;
+      }
+
+      else if (u(0, 7) === "0001111") {
+        decoded = "Add/substract - Sub - Immediate operand";
+        const Offset3 = b2(7, 10);
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = registers[Rs] - Offset3;
+      }
+
+      else if (u(0, 5) === "00100") {
+        decoded = "move/compare/add/substract immediate - MOV";
+        const Rd = b2(5, 8);
+        const Offset8 = b2(8, 16);
+        registers[Rd] = Offset8;
+      }
+
+      else if (u(0, 5) === "00101") {
+        decoded = "move/compare/add/substract immediate - CMP (Not implemented)";
+        supported = false;
+      }
+
+      else if (u(0, 5) === "00110") {
+        decoded = "move/compare/add/substract immediate - ADD";
+        const Rd = b2(5, 8);
+        const Offset8 = b2(8, 16);
+        registers[Rd] += Offset8;
+      }
+
+      else if (u(0, 5) === "00111") {
+        decoded = "move/compare/add/substract immediate - SUB";
+        const Rd = b2(5, 8);
+        const Offset8 = b2(8, 16);
+        registers[Rd] -= Offset8;
+      }
+
+      else if (u(0, 10) === "0100000000") {
+        decoded = "ALU operations - AND";
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = (registers[Rd] && registers[Rs]) ? 1 : 0;
+      }
+
+      else if (u(0, 10) === "0100000001") {
+        decoded = "ALU operations - EOR";
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = registers[Rd] ^ registers[Rs];
+      }
+
+      else if (u(0, 10) === "0100000010") {
+        decoded = "ALU operations - LSL";
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = registers[Rd] * (2 ** registers[Rs]);
+      }
+
+      else if (u(0, 10) === "0100000011") {
+        decoded = "ALU operations - LSR";
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = Math.trunc(registers[Rd] / (2 ** registers[Rs]));
+      }
+
+      else if (u(0, 10) === "0100000100") {
+        decoded = "ALU operations - ASR (Not tested)";
+        const Rs = b2(10, 13);
+        const Rd = b2(13, 16);
+        registers[Rd] = Math.trunc(registers[Rd] / (2 ** registers[Rs]));
+      }
+
+      else {
+        decoded = "Unknown/Unsupported instruction";
+        supported = false;
+      }
+
+      $("decoded").textContent = decoded;
+      if (!supported) logLine(`Instr non supportée: 0x${tok} (bin ${instrBin})`, "WARN");
+      else logLine(`OK: 0x${tok} -> ${decoded}`, "OK");
+
+      // Next instruction + PC identique à ton script: PC = current_instruction*2 :contentReference[oaicite:3]{index=3}
+      if (currentInstruction === fileTokens.length - 1) {
+        currentInstruction++; // passe au-delà, affichera "empty"
+      } else {
+        currentInstruction++;
+      }
+      registers[7] = currentInstruction * 2;
+
+      updateUI();
+    }
+
+    $("fileInput").addEventListener("change", (event) => {
+      const f = event.target.files?.[0];
+      if (!f) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        fileTokens = parseLikePython(text);
+        $("fileContent").textContent = fileTokens.join("\n");
+        ready = true;
+        $("info").textContent = `Loaded ${fileTokens.length} tokens`;
+        resetState();
+      };
+      reader.readAsText(f);
+    });
+
+    $("stepBtn").addEventListener("click", execOneInstruction);
+    $("resetBtn").addEventListener("click", resetState);
+
     updateUI();
-    return;
-  }
-
-  const tok = fileTokens[currentInstruction];
-  const instrBin = bin16FromHexToken(tok);
-  if (!instrBin) {
-    $("decoded").textContent = "Invalid hex token";
-    logLine(`Token invalide: "${tok}"`, "ERR");
-    currentInstruction++;
-    registers[7] = currentInstruction * 2;
-    updateUI();
-    return;
-  }
-
-  // Decoder (même patterns et mêmes champs que ton Python) :contentReference[oaicite:2]{index=2}
-  let decoded = "";
-  let supported = true;
-
-  const bits = instrBin;
-
-  const u = (s, e) => bits.slice(s, e);           // substring bits [s:e)
-  const b2 = (s, e) => parseInt(u(s, e), 2);
-
-  if (u(0,5) === "00000") {
-    decoded = "move shifted register - LSL";
-    const Offset5 = b2(5,10);
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = registers[Rs] * (2 ** Offset5);
-  }
-  else if (u(0,5) === "00001") {
-    decoded = "move shifted register - LSR";
-    const Offset5 = b2(5,10);
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = Math.trunc(registers[Rs] / (2 ** Offset5));
-  }
-  else if (u(0,5) === "00010") {
-    decoded = "move shifted register - ASR (not tested)";
-    const Offset5 = b2(5,10);
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = Math.trunc(registers[Rs] / (2 ** Offset5));
-  }
-  else if (u(0,7) === "0001100") {
-    decoded = "Add/substract - Add - Register operand";
-    const Rn = b2(7,10);
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = registers[Rs] + registers[Rn];
-  }
-  else if (u(0,7) === "0001101") {
-    decoded = "Add/substract - Sub - Register operand";
-    const Rn = b2(7,10);
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = registers[Rs] - registers[Rn];
-  }
-  else if (u(0,7) === "0001110") {
-    decoded = "Add/substract - Add - Immediate operand";
-    const Offset3 = b2(7,10);
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = registers[Rs] + Offset3;
-  }
-  else if (u(0,7) === "0001111") {
-    decoded = "Add/substract - Sub - Immediate operand";
-    const Offset3 = b2(7,10);
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = registers[Rs] - Offset3;
-  }
-  else if (u(0,5) === "00100") {
-    decoded = "move/compare/add/substract immediate - MOV";
-    const Rd = b2(5,8);
-    const Offset8 = b2(8,16);
-    registers[Rd] = Offset8;
-  }
-  else if (u(0,5) === "00101") {
-    decoded = "move/compare/add/substract immediate - CMP (Not implemented)";
-    supported = false;
-  }
-  else if (u(0,5) === "00110") {
-    decoded = "move/compare/add/substract immediate - ADD";
-    const Rd = b2(5,8);
-    const Offset8 = b2(8,16);
-    registers[Rd] += Offset8;
-  }
-  else if (u(0,5) === "00111") {
-    decoded = "move/compare/add/substract immediate - SUB";
-    const Rd = b2(5,8);
-    const Offset8 = b2(8,16);
-    registers[Rd] -= Offset8;
-  }
-  else if (u(0,10) === "0100000000") {
-    decoded = "ALU operations - AND";
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    // ⚠️ ton Python utilise "and" (booléen), pas "&". Je copie exactement.
-    registers[Rd] = (registers[Rd] && registers[Rs]) ? 1 : 0;
-  }
-  else if (u(0,10) === "0100000001") {
-    decoded = "ALU operations - EOR";
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = registers[Rd] ^ registers[Rs];
-  }
-  else if (u(0,10) === "0100000010") {
-    decoded = "ALU operations - LSL";
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = registers[Rd] * (2 ** registers[Rs]);
-  }
-  else if (u(0,10) === "0100000011") {
-    decoded = "ALU operations - LSR";
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = Math.trunc(registers[Rd] / (2 ** registers[Rs]));
-  }
-  else if (u(0,10) === "0100000100") {
-    decoded = "ALU operations - ASR (Not tested)";
-    const Rs = b2(10,13);
-    const Rd = b2(13,16);
-    registers[Rd] = Math.trunc(registers[Rd] / (2 ** registers[Rs]));
-  }
-  else {
-    decoded = "Unknown/Unsupported instruction";
-    supported = false;
-  }
-
-  $("decoded").textContent = decoded;
-  if (!supported) logLine(`Instr non supportée: 0x${tok} (bin ${instrBin})`, "WARN");
-  else logLine(`OK: 0x${tok} -> ${decoded}`, "OK");
-
-  // Next instruction + PC identique à ton script: PC = current_instruction*2 :contentReference[oaicite:3]{index=3}
-  if (currentInstruction === fileTokens.length - 1) {
-    currentInstruction++; // passe au-delà, affichera "empty"
-  } else {
-    currentInstruction++;
-  }
-  registers[7] = currentInstruction * 2;
-
-  updateUI();
-}
-
-$("fileInput").addEventListener("change", (event) => {
-  const f = event.target.files?.[0];
-  if (!f) return;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const text = e.target.result;
-    fileTokens = parseLikePython(text);
-    $("fileContent").textContent = fileTokens.join("\n");
-    ready = true;
-    $("info").textContent = `Loaded ${fileTokens.length} tokens`;
-    resetState();
-  };
-  reader.readAsText(f);
-});
-
-$("stepBtn").addEventListener("click", execOneInstruction);
-$("resetBtn").addEventListener("click", resetState);
-
-updateUI();
-</script>
+  </script>
 </body>
+
 </html>
