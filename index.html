@@ -13,6 +13,12 @@
       margin: 20px;
     }
 
+    .footer {
+      position: fixed;
+      bottom:0;
+      right: 1%;
+    }
+
     .container {
       display: flex;
       gap: 24px;
@@ -31,6 +37,7 @@
     h2,
     h3 {
       margin: 8px 0 12px 0;
+      text-align: center;
     }
 
     input,
@@ -97,8 +104,10 @@
   <h2>ARO - Instruction Emulator (Web)</h2>
   </header>
   <div class="container">
+    <h3>file selection</h3>
     <div class="panel">
       <div class="row">
+        <label for="file" class="btn">bob2048</label>
         <input type="file" id="fileInput" accept=".raw" required />
         <button id="stepBtn" disabled>Execute instruction</button>
         <button id="resetBtn" disabled>Reset</button>
