@@ -349,7 +349,7 @@
       updateUI();
     }
 
-    input.addEventListener("change", function () {
+    /*input.addEventListener("change", function () {
       const file = this.files[0];
 
       if (!file) return;
@@ -365,7 +365,17 @@
         return;
       }
 
-      console.log("Fichier valide :", file.name);
+      //console.log("Fichier valide :", file.name);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        fileTokens = parse(text);
+        $("fileContent").textContent = fileTokens.join("\n");
+        ready = true;
+        $("info").textContent = `Loaded ${fileTokens.length} tokens`;
+        resetState();
+      };
+      reader.readAsText(f);
 
       // allow reload.
       this.value = "";
@@ -385,7 +395,43 @@
         resetState();
       };
       reader.readAsText(f);
+    });*/
+
+    $("fileInput").addEventListener("change", (event) => {
+      const input = event.target;
+      const f = input.files?.[0];
+      if (!f) return;
+
+      // 🔎 Vérification extension
+      const fileName = f.name.toLowerCase();
+      if (!fileName.endsWith(".raw")) {
+        alert("Seuls les fichiers .raw sont autorisés !");
+        input.value = "";   // reset pour pouvoir recharger
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const text = e.target.result;
+
+        fileTokens = parse(text);
+        $("fileContent").textContent = fileTokens.join("\n");
+        ready = true;
+        $("info").textContent = `Loaded ${fileTokens.length} tokens`;
+        resetState();
+
+        input.value = "";
+      };
+
+      reader.onerror = () => {
+        alert("Erreur lors de la lecture du fichier.");
+        input.value = "";
+      };
+
+      reader.readAsText(f);
     });
+
 
     $("stepBtn").addEventListener("click", execOneInstruction);
     $("resetBtn").addEventListener("click", resetState);
