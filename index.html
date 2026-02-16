@@ -99,7 +99,7 @@
   <div class="container">
     <div class="panel">
       <div class="row">
-        <input type="file" id="fileInput" />
+        <input type="file" id="fileInput" value="bob2999" accept=".raw" required/>
         <button id="stepBtn" disabled>Execute instruction</button>
         <button id="resetBtn" disabled>Reset</button>
       </div>
@@ -172,9 +172,7 @@
       updateUI();
     }
 
-    function parseLikePython(text) {
-      // Copie la logique de ton script : split lines, puis à partir de la ligne 7
-      // et split par espaces, flatten + clean '' :contentReference[oaicite:1]{index=1}
+    function parse(text) {
       const lines = text.split("\n");
       const out = [];
       for (let i = 7; i < lines.length - 1; i++) {
@@ -357,7 +355,7 @@
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target.result;
-        fileTokens = parseLikePython(text);
+        fileTokens = parse(text);
         $("fileContent").textContent = fileTokens.join("\n");
         ready = true;
         $("info").textContent = `Loaded ${fileTokens.length} tokens`;
