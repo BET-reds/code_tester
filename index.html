@@ -336,8 +336,9 @@
 
       $("decoded").textContent = decoded;
       if (!supported) logLine(`Instr non supportée: 0x${tok} (bin ${instrBin})`, "WARN");
-      else logLine(`OK: 0x${tok} -> ${decoded}`, "OK");
+      else logLine(`0x${tok} -> ${decoded}`, "OK");
 
+      updateUI();
       // Next instruction + PC identique à ton script: PC = current_instruction*2 :contentReference[oaicite:3]{index=3}
       if (currentInstruction === fileTokens.length - 1) {
         currentInstruction++; // passe au-delà, affichera "empty"
@@ -346,7 +347,7 @@
       }
       registers[7] = currentInstruction * 2;
 
-      updateUI();
+
     }
 
     /*input.addEventListener("change", function () {
