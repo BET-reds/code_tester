@@ -15,7 +15,7 @@
 
     footer {
       position: fixed;
-      bottom:0;
+      bottom: 0;
       right: 1%;
     }
 
@@ -43,6 +43,16 @@
     input,
     button {
       font: inherit;
+    }
+
+    .btn {
+      padding: 10px 12px;
+      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: 1px solid #a3a3a3;
+      background: #fff;
+      color: #000;
     }
 
     button {
@@ -101,14 +111,14 @@
 
 <body>
   <header>
-  <h2>ARO - Instruction Emulator (Web)</h2>
+    <h2>ARO - Instruction Emulator (Web)</h2>
   </header>
   <div class="container">
-    
+
     <div class="panel">
       <h3>file selection</h3>
       <div class="row">
-        <label for="fileInput" class="btn">bob2048</label>
+        <label for="fileInput" class="btn">Load file</label>
         <input type="file" id="fileInput" style="display:none;" accept=".raw" required />
         <button id="stepBtn" disabled>Execute instruction</button>
         <button id="resetBtn" disabled>Reset</button>
