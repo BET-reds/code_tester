@@ -169,6 +169,7 @@
 
       if (cls) line.className = cls.toLowerCase(); // applique la classe CSS ok/warn/err
       line.textContent = msg;
+      line.textContent = `[${cls}] ${msg}`; //msg;
 
       // Ajoute la ligne en haut
       log.prepend(line);
