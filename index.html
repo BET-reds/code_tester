@@ -101,15 +101,15 @@
       margin: 4px 6px 0 0;
     }
 
-    .WARN {
+    .warn {
       color: #ffcc66;
     }
 
-    .ERR {
+    .err {
       color: #ff6b6b;
     }
 
-    .OK {
+    .ok {
       color: #7ee787;
     }
   </style>
@@ -161,11 +161,6 @@
     const $ = (id) => document.getElementById(id);
     const input = document.getElementById("fileInput");
 
-    /*function logLine(msg, cls = "") {
-      const line = cls ? `[${cls}] ${msg}` : msg;
-      $("log").textContent = (line + "\n" + $("log").textContent).slice(0, 6000);
-    }*/
-
     function logLine(msg, cls = "") {
       const log = $("log");
 
@@ -178,7 +173,7 @@
       // Ajoute la ligne en haut
       log.prepend(line);
 
-      // Limite à 100 lignes pour ne pas trop grossir
+      // Limite à 100 lignes 
       while (log.childNodes.length > 100) {
         log.removeChild(log.lastChild);
       }
